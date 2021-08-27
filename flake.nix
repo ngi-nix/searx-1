@@ -1,5 +1,5 @@
 {
-description = "Tracking The Trackers - API to submit APKs for testing.";
+  description = "Searx plugin for Searching the Green Web";
 
   inputs.nixpkgs = {
     type = "github";
@@ -8,14 +8,7 @@ description = "Tracking The Trackers - API to submit APKs for testing.";
     ref = "21.05";
   };
 
-  inputs.machnix = {
-    type = "github";
-    owner = "DavHau";
-    repo = "mach-nix";
-    ref = "3.1.1";
-  };
-
-  outputs = { self, nixpkgs, machnix }:
+  outputs = { self, nixpkgs }:
     let
 
       # System types to support.
@@ -29,45 +22,52 @@ description = "Tracking The Trackers - API to submit APKs for testing.";
       nixpkgsFor = forAllSystems (system:
         import nixpkgs {
           inherit system;
-          # overlays = [ self.overlay ];
+          overlays = [ self.overlay ];
         });
 
       in {
 
-        packages.x86_64-linux.testPlugin = nixpkgs.legacyPackages.x86_64-linux.python38Packages.buildPythonPackage rec {
-          pname = "tgwf-searx-plugin";
-          version = "0.2";
+        overlay = final: prev: rec {
 
-          buildInputs = [
-            nixpkgsFor."x86_64-linux".searx
-          ];
-
-          src = ./.;
-
-          doCheck = false;
-        };
-
-        # patchedSearx
-        out1 = with nixpkgsFor."x86_64-linux";
-          let
-            my-python-packages = python-packages: with python-packages; [
-              self.packages.x86_64-linux.testPlugin
+          # TODO should this be in python packages?
+          tgwf-green-results-searx-plugin = prev.python38Packages.buildPythonPackage {
+            pname = "tgwf-searx-plugin";
+            version = "0.2";
+            buildInputs = [
+              prev.searx
             ];
-            python-with-my-packages = python3.withPackages my-python-packages;
-            searx-with-python = searx.override {
-              python3 = python-with-my-packages;
+            src = ./.;
+            doCheck = false;
+          };
+
+          python38 = let
+            packageOverrides = python-self: python-super: {
+              tgwf-green-results-searx-plugin = final.tgwf-green-results-searx-plugin;
             };
-            searx-with-python-and-env = searx-with-python.overrideAttrs (oldAttrs: {
+          in prev.python38.override {inherit packageOverrides;};
+
+          searx = prev.searx.overrideAttrs (oldAttrs: {
               propagatedBuildInputs = oldAttrs.propagatedBuildInputs ++ [
-                self.outputs.packages.x86_64-linux.testPlugin
+                tgwf-green-results-searx-plugin
               ];
               postFixup = ''
                 ${oldAttrs.postFixup}
                 mkdir -p $out/share/static/plugins/external_plugins/plugin_only_show_green_results
               '';
             });
-          in searx-with-python-and-env;
 
+        };
+
+        packages = forAllSystems (system:
+          {
+            inherit (nixpkgsFor.${system}) tgwf-green-results-searx-plugin searx;
+          }
+        );
+
+        # The default package for 'nix build'. This makes sense if the
+        # flake provides only one package or there is a clear "main"
+        # package.
+        defaultPackage = forAllSystems (system: self.packages.${system}.searx);
 
   };
 
