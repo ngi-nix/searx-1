@@ -69,6 +69,33 @@
         # package.
         defaultPackage = forAllSystems (system: self.packages.${system}.searx);
 
+        # To use as `nix develop`
+        # will provide shell with
+        # - `searx-run`
+        # - python with installed plugin module
+        # - simple searx config that would allow its launch & plugin utilization
+        devShell = forAllSystems (system: nixpkgsFor.${system}.mkShell rec {
+          packages = with nixpkgsFor.${system}; [ searx tgwf-green-results-searx-plugin ];
+          settingsFile = nixpkgsFor.${system}.writeText "settings.yml"
+            ''
+            use_default_settings: True
+            server:
+                secret_key : "dev-server-secret"
+
+            plugins:
+              - only_show_green_results
+            '';
+          SEARX_SETTINGS_PATH = "${settingsFile}";
+        });
+
+        nixosModules.tgwf-green-results-searx-plugin-module = { pkgs, ... }:
+        {
+          nixpkgs.overlays = [ self.overlay ];
+          services.searx.settings = {
+            plugins = [ "only_show_green_results" ];
+          };
+        };
+
   };
 
 }
