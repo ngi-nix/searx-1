@@ -12,6 +12,10 @@
     let
       # System types to support.
       supportedSystems = [ "x86_64-linux" ];
+
+      # python module name, that's used in `setup.py`
+      pluginName = "only_show_green_results";
+
       # Helper function to generate an attrset '{ x86_64-linux = f "x86_64-linux"; ... }'.
       forAllSystems = f:
         nixpkgs.lib.genAttrs supportedSystems (system: f system);
@@ -44,7 +48,7 @@
               ];
               postFixup = ''
                 ${oldAttrs.postFixup}
-                mkdir -p $out/share/static/plugins/external_plugins/plugin_only_show_green_results
+                mkdir -p $out/share/static/plugins/external_plugins/plugin_${pluginName}
               '';
             });
 
@@ -75,7 +79,7 @@
                 secret_key : "dev-server-secret"
 
             plugins:
-              - only_show_green_results
+              - ${pluginName}
             '';
           SEARX_SETTINGS_PATH = "${settingsFile}";
         });
@@ -100,7 +104,7 @@
         {
           nixpkgs.overlays = [ self.overlay ];
           services.searx.settings = {
-            plugins = [ "only_show_green_results" ];
+            plugins = [ pluginName ];
           };
         };
 
