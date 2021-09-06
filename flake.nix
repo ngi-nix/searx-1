@@ -1,14 +1,14 @@
 {
   description = "Searx plugin for Searching the Green Web";
 
-  inputs.nixpkgs = {
-    type = "github";
-    owner = "NixOS";
-    repo = "nixpkgs";
-    ref = "21.05";
+  inputs.nixpkgs.url = "github:NixOS/nixpkgs/21.05";
+
+  inputs.flake-compat = {
+    url = "github:edolstra/flake-compat";
+    flake = false;
   };
 
-  outputs = { self, nixpkgs }:
+  outputs = { self, nixpkgs, flake-compat }:
     let
       # System types to support.
       supportedSystems = [ "x86_64-linux" ];
